@@ -2,29 +2,28 @@
 class DockpipeStaging < Formula
   desc "Run commands, packages, and workflows in isolated environments (staging)"
   homepage "https://github.com/Dockpipe-Industries/dockpipe"
-  version "0.6.0-staging.37389279395.1.9725dee90d4d"
+  version "0.6.0-staging.37414177001.1.48a5701e3652"
   license "Apache-2.0"
 
   depends_on :macos
-  conflicts_with "dockpipe", because: "both install the dockpipe command"
 
   on_arm do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37389279395.1.9725dee90d4d/dockpipe_0.6.0_darwin_arm64.tar.gz"
-    sha256 "71323908852ed8e362ee8bd7fc55f67a98e56e21374371a9402b78996f054a32"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37414177001.1.48a5701e3652/dockpipe_0.6.0_darwin_arm64.tar.gz"
+    sha256 "6b5bff02397e6cbb34350c7f68257298fca764296403863aa203a566fbaa44a9"
 
     resource "packages" do
-      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37389279395.1.9725dee90d4d/dockpipe-packages_0.6.0_darwin-arm64.tar.gz"
-      sha256 "dee8ad5590fb8c9728616ece4d676a577d110c0bd20469910638b17397508990"
+      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37414177001.1.48a5701e3652/dockpipe-packages_0.6.0_darwin-arm64.tar.gz"
+      sha256 "a8e72330a131981cadf84ca52a230b34e55376d993f8477825d5728614616462"
     end
   end
 
   on_intel do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37389279395.1.9725dee90d4d/dockpipe_0.6.0_darwin_amd64.tar.gz"
-    sha256 "3eb9f71eb7a34b5a9f13368153ae183d3e57a17c7d1a5432c3b72284e0b78c87"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37414177001.1.48a5701e3652/dockpipe_0.6.0_darwin_amd64.tar.gz"
+    sha256 "39d9b8c6abf61569399b52eeebda2f0271803e18ef810cc14d9a3c779b46d3a6"
 
     resource "packages" do
-      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37389279395.1.9725dee90d4d/dockpipe-packages_0.6.0_darwin-amd64.tar.gz"
-      sha256 "6bf8334e112c76b499ab67217cbd40d7af35a11bd5f0db8b275e8d82506daed1"
+      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37414177001.1.48a5701e3652/dockpipe-packages_0.6.0_darwin-amd64.tar.gz"
+      sha256 "a19c6e219ed7935a4ac61a624fbff9be506b930b2d1d19ca226bc079333432ae"
     end
   end
 
