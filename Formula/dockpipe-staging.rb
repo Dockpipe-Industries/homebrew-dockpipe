@@ -2,28 +2,28 @@
 class DockpipeStaging < Formula
   desc "Run commands, packages, and workflows in isolated environments (staging)"
   homepage "https://github.com/Dockpipe-Industries/dockpipe"
-  version "0.6.0-staging.37798113751.1.ec6228b5b663"
+  version "0.6.1-staging.37817108070.1.cdc7ac2f9c36"
   license "Apache-2.0"
 
   depends_on :macos
 
   on_arm do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe_0.6.0_darwin_arm64.tar.gz"
-    sha256 "5bc8a07c31f2469ae36e467b5f557bdf8849a9aa1ed0159a6b1b0fb38ad764c3"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.1-staging.37817108070.1.cdc7ac2f9c36/dockpipe_0.6.1_darwin_arm64.tar.gz"
+    sha256 "22441d77d5f649e91f7b1f8266cae6b7887848c3dd328a754ccd9c7cf4682fb5"
 
     resource "core" do
-      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe-core-0.6.0.tar.gz"
-      sha256 "ccd4b632a557c8544830ea8a6eb69f6ab5ceaae0170bd1e05cc8ff3e98b45cc8"
+      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.1-staging.37817108070.1.cdc7ac2f9c36/dockpipe-core-0.6.1.tar.gz"
+      sha256 "545c41872f0b4a1c9bfa8dfadacdfbc040ee3c09b9d213bcfd19a1bd359edebc"
     end
   end
 
   on_intel do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe_0.6.0_darwin_amd64.tar.gz"
-    sha256 "7db0dfad07d0dfea5e642daed949ba329ff65408b7637089bfa12e78c465db75"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.1-staging.37817108070.1.cdc7ac2f9c36/dockpipe_0.6.1_darwin_amd64.tar.gz"
+    sha256 "c220d9d9261fb82e798ebcf571c9eb5f8a33e80e8e4a040d8c6ae2ef91b95410"
 
     resource "core" do
-      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe-core-0.6.0.tar.gz"
-      sha256 "ccd4b632a557c8544830ea8a6eb69f6ab5ceaae0170bd1e05cc8ff3e98b45cc8"
+      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.1-staging.37817108070.1.cdc7ac2f9c36/dockpipe-core-0.6.1.tar.gz"
+      sha256 "545c41872f0b4a1c9bfa8dfadacdfbc040ee3c09b9d213bcfd19a1bd359edebc"
     end
   end
 
@@ -31,7 +31,7 @@ class DockpipeStaging < Formula
     (libexec/"bin").install "dockpipe"
     # Keep the verified archive intact. Optional packages are installed on demand.
     core = resource("core").fetch
-    (libexec/"share/dockpipe/packages/core").install core => "dockpipe-core-0.6.0.tar.gz"
+    (libexec/"share/dockpipe/packages/core").install core => "dockpipe-core-0.6.1.tar.gz"
 
     # Use the existing package-root override so Homebrew owns the entire install.
     (bin/"dockpipe").write <<~SH
@@ -73,7 +73,7 @@ class DockpipeStaging < Formula
     installed_files = Dir.glob("#{store}/**/*").filter_map do |path|
       Pathname(path).relative_path_from(store).to_s if File.file?(path)
     end
-    assert_equal ["packages/core/dockpipe-core-0.6.0.tar.gz"], installed_files
+    assert_equal ["packages/core/dockpipe-core-0.6.1.tar.gz"], installed_files
     inventory = JSON.parse(shell_output("#{bin}/dockpipe package list --format json --workdir #{testpath}"))
     assert_empty inventory.fetch("warnings")
     refute_empty inventory.fetch("packages")
