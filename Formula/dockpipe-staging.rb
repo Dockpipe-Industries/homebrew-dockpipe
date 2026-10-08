@@ -2,40 +2,36 @@
 class DockpipeStaging < Formula
   desc "Run commands, packages, and workflows in isolated environments (staging)"
   homepage "https://github.com/Dockpipe-Industries/dockpipe"
-  version "0.6.0-staging.37427226861.2.32151189bdd0"
+  version "0.6.0-staging.37798113751.1.ec6228b5b663"
   license "Apache-2.0"
 
   depends_on :macos
 
   on_arm do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37427226861.2.32151189bdd0/dockpipe_0.6.0_darwin_arm64.tar.gz"
-    sha256 "34fc2957037eeecb1f579ec8380003543d38ca61aa3c8856db512333e02eae79"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe_0.6.0_darwin_arm64.tar.gz"
+    sha256 "5bc8a07c31f2469ae36e467b5f557bdf8849a9aa1ed0159a6b1b0fb38ad764c3"
 
-    resource "packages" do
-      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37427226861.2.32151189bdd0/dockpipe-packages_0.6.0_darwin-arm64.tar.gz"
-      sha256 "abf7684854f08bdfb529d0ec9b83b5f094b6d1e5440d547a4ecf64821c34e314"
+    resource "core" do
+      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe-core-0.6.0.tar.gz"
+      sha256 "ccd4b632a557c8544830ea8a6eb69f6ab5ceaae0170bd1e05cc8ff3e98b45cc8"
     end
   end
 
   on_intel do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37427226861.2.32151189bdd0/dockpipe_0.6.0_darwin_amd64.tar.gz"
-    sha256 "56861534dc37480027ebc99d6cbde57e3ce4155b4aecaa5d94d7f52fe1161ebe"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe_0.6.0_darwin_amd64.tar.gz"
+    sha256 "7db0dfad07d0dfea5e642daed949ba329ff65408b7637089bfa12e78c465db75"
 
-    resource "packages" do
-      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37427226861.2.32151189bdd0/dockpipe-packages_0.6.0_darwin-amd64.tar.gz"
-      sha256 "f095bfba2f420d4632ecec4d257a80bc56cb0e6bf2847a07dc30f7619e3336ab"
+    resource "core" do
+      url "https://packages.staging.dockpipe.com/packages/candidates/0.6.0-staging.37798113751.1.ec6228b5b663/dockpipe-core-0.6.0.tar.gz"
+      sha256 "ccd4b632a557c8544830ea8a6eb69f6ab5ceaae0170bd1e05cc8ff3e98b45cc8"
     end
   end
 
   def install
     (libexec/"bin").install "dockpipe"
-    resource("packages").stage do
-      store = libexec/"share/dockpipe"
-      store.install "packages-store-manifest.json"
-      (store/"packages/core").install Dir["dockpipe-core-*.tar.gz"]
-      (store/"packages/workflows").install Dir["dockpipe-workflow-*.tar.gz"]
-      (store/"packages/resolvers").install Dir["dockpipe-resolver-*.tar.gz"]
-    end
+    # Keep the verified archive intact. Optional packages are installed on demand.
+    core = resource("core").fetch
+    (libexec/"share/dockpipe/packages/core").install core => "dockpipe-core-0.6.0.tar.gz"
 
     # Use the existing package-root override so Homebrew owns the entire install.
     (bin/"dockpipe").write <<~SH
@@ -73,17 +69,14 @@ class DockpipeStaging < Formula
     assert_equal "brew-ok", (testpath/"result.txt").read
 
     require "json"
-    require "digest"
     store = libexec/"share/dockpipe"
-    packages = JSON.parse((store/"packages-store-manifest.json").read).fetch("packages")
-    { "core" => [packages.fetch("core")],
-      "workflows" => packages.fetch("workflows"),
-      "resolvers" => packages.fetch("resolvers") }.each do |kind, entries|
-      refute_empty entries
-      entries.each do |entry|
-        archive = store/"packages"/kind/entry.fetch("tarball")
-        assert_equal entry.fetch("sha256"), Digest::SHA256.file(archive).hexdigest
-      end
+    installed_files = Dir.glob("#{store}/**/*").filter_map do |path|
+      Pathname(path).relative_path_from(store).to_s if File.file?(path)
     end
+    assert_equal ["packages/core/dockpipe-core-0.6.0.tar.gz"], installed_files
+    inventory = JSON.parse(shell_output("#{bin}/dockpipe package list --format json --workdir #{testpath}"))
+    assert_empty inventory.fetch("warnings")
+    refute_empty inventory.fetch("packages")
+    assert_equal ["core"], inventory.fetch("packages").map { |package| package.fetch("kind") }.uniq
   end
 end
