@@ -1,15 +1,15 @@
 # Generated from a completed staging release; update through the sync workflow.
 cask "dockpipe-desktop-staging" do
-  version "0.6.5-staging.38149878120.1.95d3a9815b7f"
+  version "0.6.8-staging.38309329321.1.9ff64e91c254"
 
   on_arm do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.5-staging.38149878120.1.95d3a9815b7f/dockpipe-desktop_0.6.5_darwin_arm64.zip"
-    sha256 "ad817a1b0cecae587e89aa809f05053253f6e562c8323489b1fb2054e9eb16fc"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.8-staging.38309329321.1.9ff64e91c254/dockpipe-desktop_0.6.8_darwin_arm64.zip"
+    sha256 "77c737c801eaa2028bb25b564a38624c595c92129ce59293fed87e52b4643c03"
   end
 
   on_intel do
-    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.5-staging.38149878120.1.95d3a9815b7f/dockpipe-desktop_0.6.5_darwin_amd64.zip"
-    sha256 "e37723617245ebd2109c8e392a47f4880b20ca01aa2d85b3c93e74e46ae079a0"
+    url "https://packages.staging.dockpipe.com/packages/candidates/0.6.8-staging.38309329321.1.9ff64e91c254/dockpipe-desktop_0.6.8_darwin_amd64.zip"
+    sha256 "f2df1bf0bdb352298c06bb9e82141549c4e0e0bd5bb9953a39d075755ac1ff81"
   end
 
   name "Dockpipe Desktop (staging)"
