@@ -12,6 +12,12 @@
 name: "CodeQL Advanced"
 
 on:
+  workflow_dispatch:
+    inputs:
+      expected_head_sha:
+        description: Exact candidate branch commit to qualify
+        required: true
+        type: string
   push:
     branches: [ "main" ]
   pull_request:
@@ -58,6 +64,14 @@ jobs:
         # If you are analyzing a compiled language, you can modify the 'build-mode' for that language to customize how
         # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
     steps:
+    - name: Verify explicitly dispatched candidate commit
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        EXPECTED_HEAD_SHA: ${{ inputs.expected_head_sha }}
+      shell: bash
+      run: |
+        [[ "$EXPECTED_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+        test "$GITHUB_SHA" = "$EXPECTED_HEAD_SHA"
     - name: Checkout repository
       uses: actions/checkout@v7
 
