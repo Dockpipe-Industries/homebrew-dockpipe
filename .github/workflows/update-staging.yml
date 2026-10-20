@@ -94,11 +94,15 @@ jobs:
           RUBY
           brew ruby "$RUNNER_TEMP/check-versions.rb"
 
-  publish:
+  propose:
     needs: [prepare, verify]
+    if: github.repository == 'Dockpipe-Industries/homebrew-dockpipe' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
+      pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -107,7 +111,7 @@ jobs:
         with:
           name: staging-formula
           path: prepared
-      - name: Publish tested formula if candidate is still current
+      - name: Propose tested formula and dispatch exact-head checks
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/sync_staging.py publish
+        run: python3 scripts/sync_staging.py propose
