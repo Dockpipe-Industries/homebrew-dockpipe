@@ -184,6 +184,89 @@ def verify_candidate_scope(base_sha, head_sha, contents):
         raise ValueError("Existing candidate branch contains unrelated changes")
 
 
+def merged_proposal_identity(pull, branch, head_sha):
+    if (pull.get("merged") is not True or not pull.get("merged_at")
+            or pull.get("state") != "closed"
+            or pull.get("head", {}).get("sha") != head_sha
+            or pull.get("head", {}).get("ref") != branch
+            or pull.get("head", {}).get("repo", {}).get("full_name") != TAP
+            or pull.get("base", {}).get("ref") != "main"
+            or pull.get("base", {}).get("repo", {}).get("full_name") != TAP
+            or not re.fullmatch(r"[0-9a-f]{40}", pull.get("merge_commit_sha", ""))):
+        raise ValueError("Candidate branch is not the exact head of a merged main proposal")
+    return pull["number"], head_sha, pull["merge_commit_sha"]
+
+
+def require_ancestor(ancestor, descendant):
+    comparison = github(f"{TAP}/compare/{ancestor}...{descendant}")
+    if (comparison.get("status") not in {"ahead", "identical"}
+            or comparison.get("merge_base_commit", {}).get("sha") != ancestor):
+        raise ValueError("Merged candidate is not an ancestor of current main")
+
+
+def staging_contents_at(sha):
+    contents = {}
+    for name in (FORMULA, CASK):
+        item = github(f"{TAP}/contents/{name}?ref={sha}")
+        if (item.get("type") != "file" or item.get("path") != name
+                or item.get("encoding") != "base64"
+                or type(item.get("size")) is not int or not 0 < item["size"] <= 65536):
+            raise ValueError("Merged candidate staging file metadata differs")
+        encoded = item.get("content", "")
+        if not isinstance(encoded, str) or len(encoded) > 90000:
+            raise ValueError("Merged candidate staging file exceeds its bound")
+        content = base64.b64decode("".join(encoded.split()), validate=True)
+        if len(content) != item["size"]:
+            raise ValueError("Merged candidate staging file size differs")
+        contents[name] = content
+    return contents
+
+
+def reuse_merged_candidate(branch, head_sha, main_sha):
+    # A previously merged proposal can retain its branch. Only reuse that exact
+    # reviewed head, never an orphan or a branch advanced after the merge.
+    if any(not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha)
+           for sha in (head_sha, main_sha)):
+        raise ValueError("Merged candidate reuse requires exact commit identities")
+    encoded_head = urllib.parse.quote("Dockpipe-Industries:" + branch, safe="")
+    pulls = github(f"{TAP}/pulls?state=closed&base=main&head={encoded_head}&per_page=100")
+    if not isinstance(pulls, list) or len(pulls) >= 100:
+        raise ValueError("Merged candidate proposal history requires manual review")
+    matches = []
+    for summary in pulls:
+        if summary.get("head", {}).get("sha") != head_sha or not summary.get("merged_at"):
+            continue
+        pull = github(f"{TAP}/pulls/{summary['number']}")
+        identity = merged_proposal_identity(pull, branch, head_sha)
+        matches.append(identity)
+    if len(matches) != 1:
+        raise ValueError("Candidate branch has no unique merged proposal; manual review is required")
+    identity = matches[0]
+    merge_sha = identity[2]
+    require_ancestor(head_sha, main_sha)
+    require_ancestor(merge_sha, main_sha)
+    head_commit = github(f"{TAP}/git/commits/{head_sha}")
+    merge_commit = github(f"{TAP}/git/commits/{merge_sha}")
+    tree_sha = head_commit.get("tree", {}).get("sha", "")
+    if (not re.fullmatch(r"[0-9a-f]{40}", tree_sha)
+            or tree_sha != merge_commit.get("tree", {}).get("sha")):
+        raise ValueError("Merged candidate tree differs from its recorded merge")
+    if staging_contents_at(head_sha) != staging_contents_at(main_sha):
+        raise ValueError("Current main staging files differ from the merged candidate")
+
+    # REST has no atomic expected-old-ref field. Recheck both exact refs and the
+    # merged record; force=false rejects a concurrently advanced non-ancestor.
+    if (candidate_head("main") != main_sha or candidate_head(branch) != head_sha
+            or merged_proposal_identity(github(f"{TAP}/pulls/{identity[0]}"), branch, head_sha) != identity):
+        raise ValueError("Merged candidate or main moved before reuse")
+    updated = github(f"{TAP}/git/refs/heads/{branch}",
+                     {"sha": main_sha, "force": False}, method="PATCH")
+    if (updated.get("object", {}).get("sha") != main_sha
+            or candidate_head("main") != main_sha or candidate_head(branch) != main_sha):
+        raise ValueError("Merged candidate fast-forward read-back differs; manual review is required")
+    return updated
+
+
 def verify_candidate_commit(branch, contents):
     # Read all files at one immutable commit. A moving branch must never turn
     # separately verified files into a qualification claim for different bytes.
@@ -240,16 +323,15 @@ def propose(directory):
         raise ValueError("Multiple candidate proposals require manual review")
     reference_path = f"{TAP}/git/ref/heads/{branch}"
     reference = github(reference_path, allow_missing=True)
+    main = github(f"{TAP}/git/ref/heads/main")
     if reference is not None and not existing_pulls:
-        raise ValueError("Candidate branch has no open proposal; manual retirement is required")
+        reference = reuse_merged_candidate(branch, reference["object"]["sha"], main["object"]["sha"])
     if reference is None and existing_pulls:
         raise ValueError("Open candidate proposal has no branch; manual review is required")
     if reference is None:
-        main = github(f"{TAP}/git/ref/heads/main")
         github(f"{TAP}/git/refs", {"ref": "refs/heads/" + branch,
                "sha": main["object"]["sha"]}, method="POST")
     else:
-        main = github(f"{TAP}/git/ref/heads/main")
         verify_candidate_scope(main["object"]["sha"], reference["object"]["sha"], contents)
 
     encoded_branch = urllib.parse.quote(branch, safe="")
