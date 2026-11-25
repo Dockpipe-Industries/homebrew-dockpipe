@@ -356,7 +356,7 @@ def propose(directory):
         print(f"Tap already contains {candidate}.")
         return
 
-    branch = "staging-candidate/current"
+    branch = f"staging-candidate/{candidate}"
     head = urllib.parse.quote("Dockpipe-Industries:" + branch, safe="")
     existing_pulls = github(f"{TAP}/pulls?state=open&base=main&head={head}")
     if len(existing_pulls) > 1:
