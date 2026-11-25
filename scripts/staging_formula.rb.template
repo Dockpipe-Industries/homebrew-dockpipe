@@ -11,11 +11,6 @@ class DockpipeStaging < Formula
 
   def install
     (libexec/"bin").install "dockpipe"
-    # Homebrew already fetched and verified this resource before entering the
-    # install sandbox. Fetching again tries to acquire a download-cache lock.
-    # Keep the verified archive intact; optional packages are installed on demand.
-    core = resource("core").cached_download
-    (libexec/"share/dockpipe/packages/core").install core => "dockpipe-core-@RELEASE_VERSION@.tar.gz"
 
     # Use the existing package-root override so Homebrew owns the entire install.
     (bin/"dockpipe").write <<~SH
@@ -57,10 +52,9 @@ class DockpipeStaging < Formula
     installed_files = Dir.glob("#{store}/**/*").filter_map do |path|
       Pathname(path).relative_path_from(store).to_s if File.file?(path)
     end
-    assert_equal ["packages/core/dockpipe-core-@RELEASE_VERSION@.tar.gz"], installed_files
+    assert_empty installed_files
     inventory = JSON.parse(shell_output("#{bin}/dockpipe package list --format json --workdir #{testpath}"))
     assert_empty inventory.fetch("warnings")
-    refute_empty inventory.fetch("packages")
-    assert_equal ["core"], inventory.fetch("packages").map { |package| package.fetch("kind") }.uniq
+    assert_empty inventory.fetch("packages")
   end
 end
