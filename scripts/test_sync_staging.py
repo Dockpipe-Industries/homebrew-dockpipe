@@ -194,7 +194,7 @@ class MergedCandidateReuseTests(unittest.TestCase):
     MAIN = "c" * 40
     TREE = "d" * 40
     ADVANCED = "e" * 40
-    BRANCH = "staging-candidate/current"
+    BRANCH = "staging-candidate/0.6.28-staging.200.1.cccccccccccc"
 
     def setUp(self):
         self.reset_fixture()
