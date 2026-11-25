@@ -35,18 +35,11 @@ def render(candidate, checksums):
     blocks = []
     for architecture, condition in (("arm64", "on_arm"), ("amd64", "on_intel")):
         binary = f"dockpipe_{version}_darwin_{architecture}.tar.gz"
-        core = f"dockpipe-core-{version}.tar.gz"
-        for filename in (binary, core):
-            if not re.fullmatch(r"[0-9a-f]{64}", checksums.get(filename, "")):
-                raise ValueError(f"Missing or invalid checksum: {filename}")
+        if not re.fullmatch(r"[0-9a-f]{64}", checksums.get(binary, "")):
+            raise ValueError(f"Missing or invalid checksum: {binary}")
         blocks.append(f'''  {condition} do
     url "{base}/{binary}"
     sha256 "{checksums[binary]}"
-
-    resource "core" do
-      url "{base}/{core}"
-      sha256 "{checksums[core]}"
-    end
   end''')
     template = Path(__file__).with_name("staging_formula.rb.template").read_text()
     return template.replace("@CANDIDATE@", candidate).replace("@RELEASE_VERSION@", version).replace("@PLATFORMS@", "\n\n".join(blocks))

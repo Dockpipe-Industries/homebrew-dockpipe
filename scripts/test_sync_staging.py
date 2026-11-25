@@ -60,7 +60,6 @@ sys.exit(22 if status >= 400 else 0)
         catalog_bytes = json.dumps(catalog)
         checksums = {
             "release-manifest.json": hashlib.sha256(catalog_bytes.encode()).hexdigest(),
-            "dockpipe-core-0.6.0.tar.gz": "b" * 64,
         }
         for architecture in ("amd64", "arm64"):
             checksums[f"dockpipe_0.6.0_darwin_{architecture}.tar.gz"] = "c" * 64
@@ -147,6 +146,41 @@ sys.exit(22 if status >= 400 else 0)
         self.assertEqual(self.requested_paths(), [
             "packages/runtime/latest.json", f"{self.base}/release-manifest.json",
         ])
+
+    def test_publisher_retry_requires_the_original_metadata_job_and_exact_release(self):
+        run_path = f"{sync.SOURCE}/actions/runs/123"
+        release_path = f"{sync.SOURCE}/releases/tags/v{self.candidate}"
+        original = dict(self.run, conclusion="failure")
+        latest = dict(self.run, run_attempt=3)
+        meta = {"name": "staging-release / meta", "conclusion": "success",
+                "started_at": "2026-11-25T04:37:37Z", "completed_at": "2026-11-25T04:37:54Z"}
+        release = {"tag_name": f"v{self.candidate}", "target_commitish": self.run["head_sha"],
+                   "draft": False, "prerelease": True}
+        publisher = {"name": "staging-release / Publish staging candidate", "conclusion": "success"}
+        responses = {
+            f"{run_path}/attempts/2": original,
+            run_path: latest,
+            release_path: release,
+            f"{run_path}/attempts/2/jobs?per_page=100": {"jobs": [meta]},
+            f"{run_path}/attempts/3/jobs?per_page=100": {"jobs": [dict(meta), publisher]},
+        }
+        self.fixture.write_text(json.dumps(self.responses))
+        with patch.object(sync, "github", side_effect=lambda path, **kwargs: responses[path]):
+            candidate, contents = sync.latest_release()
+            self.assertEqual(candidate, self.candidate)
+            self.assertNotIn('resource "core"', contents[sync.FORMULA])
+
+            publisher["conclusion"] = "failure"
+            self.assertIsNone(sync.latest_release())
+            publisher["conclusion"] = "success"
+
+            retained_meta = responses[f"{run_path}/attempts/3/jobs?per_page=100"]["jobs"][0]
+            retained_meta["started_at"] = "2026-11-25T06:08:35Z"
+            self.assertIsNone(sync.latest_release())
+            retained_meta["started_at"] = meta["started_at"]
+
+            release["target_commitish"] = "b" * 40
+            self.assertIsNone(sync.latest_release())
 
     def test_release_checksum_mismatch_fails_closed(self):
         self.responses[f"{self.base}/release-manifest.json"]["body"] += " "

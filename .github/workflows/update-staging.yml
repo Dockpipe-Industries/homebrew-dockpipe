@@ -73,8 +73,7 @@ jobs:
           with open(sys.argv[1]) as stream:
               inventory = json.load(stream)
           assert not inventory["warnings"], inventory
-          assert inventory["packages"], inventory
-          assert all(package["kind"] == "core" for package in inventory["packages"]), inventory
+          assert not inventory["packages"], inventory
           PYTHON
           brew uninstall --cask dockpipe-desktop-staging
           dockpipe --version

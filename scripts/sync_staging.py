@@ -75,12 +75,52 @@ def completed_candidate(pointer, catalog, run):
             or catalog.get("candidate") != candidate or catalog.get("version") != version
             or not re.fullmatch(r"[0-9a-f]{40}", source_sha) or not source_sha.startswith(short_sha)):
         raise ValueError("Staging catalog provenance mismatch")
-    if (run.get("id") != int(run_id) or run.get("run_attempt") != int(attempt)
+    validate_run(run, int(run_id), int(attempt), source_sha)
+    if run.get("status") == "completed" and run.get("conclusion") == "success":
+        return True
+    if run.get("status") != "completed":
+        return False
+
+    # A publisher-only retry can reuse the release identity allocated earlier.
+    run_path = f"{SOURCE}/actions/runs/{run_id}"
+    latest = github(run_path)
+    latest_attempt = latest.get("run_attempt")
+    if not isinstance(latest_attempt, int) or latest_attempt <= int(attempt):
+        return False
+    validate_run(latest, int(run_id), latest_attempt, source_sha)
+    if latest.get("status") != "completed" or latest.get("conclusion") != "success":
+        return False
+
+    release = github(f"{SOURCE}/releases/tags/v{candidate}", allow_missing=True)
+    if (not release or release.get("tag_name") != f"v{candidate}"
+            or release.get("target_commitish") != source_sha
+            or release.get("draft") is not False or release.get("prerelease") is not True):
+        return False
+
+    original_jobs = github(f"{run_path}/attempts/{attempt}/jobs?per_page=100")["jobs"]
+    latest_jobs = github(f"{run_path}/attempts/{latest_attempt}/jobs?per_page=100")["jobs"]
+    original_meta = successful_job(original_jobs, "staging-release / meta")
+    retained_meta = successful_job(latest_jobs, "staging-release / meta")
+    publisher = successful_job(latest_jobs, "staging-release / Publish staging candidate")
+    return bool(original_meta and retained_meta and publisher
+                and original_meta.get("started_at") and original_meta.get("completed_at")
+                and retained_meta.get("started_at") == original_meta["started_at"]
+                and retained_meta.get("completed_at") == original_meta["completed_at"])
+
+
+def validate_run(run, run_id, attempt, source_sha):
+    if (run.get("id") != run_id or run.get("run_attempt") != attempt
             or run.get("head_sha") != source_sha or run.get("head_branch") != "staging"
             or run.get("event") != "push" or run.get("path") != ".github/workflows/ci.yml"
             or run.get("repository", {}).get("full_name") != SOURCE):
         raise ValueError("Release does not match the staging CI run")
-    return run.get("status") == "completed" and run.get("conclusion") == "success"
+
+
+def successful_job(jobs, name):
+    matches = [job for job in jobs if job.get("name") == name]
+    if len(matches) == 1 and matches[0].get("conclusion") == "success":
+        return matches[0]
+    return None
 
 
 def latest_release():
